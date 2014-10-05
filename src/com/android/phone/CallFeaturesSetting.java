@@ -1951,13 +1951,13 @@ public class CallFeaturesSetting extends PreferenceActivity
 
         if (mButtonCallUiInBackground != null) {
             int callUiInBackground = Settings.System.getInt(getContentResolver(),
-                    Settings.System.CALL_UI_IN_BACKGROUND, 1);
+                    Settings.System.CALL_UI_IN_BACKGROUND, 0);
             mButtonCallUiInBackground.setChecked(callUiInBackground != 0);
         }
 
         if (mButtonCallUiAsHeadsUp != null) {
             int callUiAsHeadsUp = Settings.System.getInt(getContentResolver(),
-                    Settings.System.CALL_UI_AS_HEADS_UP, 1);
+                    Settings.System.CALL_UI_AS_HEADS_UP, 0);
             mButtonCallUiAsHeadsUp.setChecked(callUiAsHeadsUp != 0);
         }
 

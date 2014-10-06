@@ -132,6 +132,22 @@
             android:entryValues="@array/incoming_call_style_values"
             android:persistent="false" />
 
+  <ListPreference
+      android:key="dialkey_padding"
+      android:title="@string/dialkey_padding_title"
+      android:dialogTitle="@string/dialkey_padding_dialog_title"
+      android:entries="@array/dialkey_padding_setting_entries"
+      android:entryValues="@array/dialkey_padding_setting_values"
+      android:persistent="false" />
+
+  <ListPreference
+      android:key="flip_action"
+      android:title="@string/flip_action_title"
+      android:dialogTitle="@string/flip_action_dialog_title"
+      android:entries="@array/flip_action_setting_entries"
+      android:entryValues="@array/flip_action_setting_values"
+      android:persistent="false" />
+
     <PreferenceScreen
             android:key="button_respond_via_sms_key"
             android:title="@string/respond_via_sms_setting_title"
@@ -188,5 +204,33 @@
             android:summary="@string/xdivert_summary"
             android:persistent="false">
     </PreferenceScreen>
+
+    <PreferenceCategory
+        android:key="preference_category_interface_key"
+        android:title="@string/preference_category_interface"
+        android:persistent="false">
+
+        <CheckBoxPreference
+            android:key="bg_incall_screen"
+            android:title="@string/bg_incall"
+            android:persistent="false"
+            android:defaultValue="true"
+            android:summary="@string/bg_incall_summary"/>
+
+        <CheckBoxPreference
+            android:key="bg_incall_screen_as_heads_up"
+            android:title="@string/bg_incall_as_heads_up"
+            android:persistent="false"
+            android:defaultValue="true"
+            android:dependency="bg_incall_screen"
+            android:summary="@string/bg_incall_as_heads_up_summary"/>
+
+        <CheckBoxPreference
+            android:key="button_non_intrusive_incall"
+            android:title="@string/non_intrusive_incall_title"
+            android:summary="@string/non_intrusive_incall_summary"
+            android:persistent="false"
+            android:defaultValue="false" />
+    </PreferenceCategory>
 
 </PreferenceScreen>

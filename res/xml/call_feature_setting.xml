@@ -28,6 +28,27 @@
     </PreferenceScreen>
 
     <PreferenceCategory
+        android:key="preference_category_interface_key"
+        android:title="@string/preference_category_interface"
+        android:persistent="false">
+
+        <CheckBoxPreference
+            android:key="bg_incall_screen"
+            android:title="@string/bg_incall"
+            android:persistent="false"
+            android:defaultValue="true"
+            android:summary="@string/bg_incall_summary"/>
+
+        <CheckBoxPreference
+            android:key="bg_incall_screen_as_heads_up"
+            android:title="@string/bg_incall_as_heads_up"
+            android:persistent="false"
+            android:defaultValue="true"
+            android:dependency="bg_incall_screen"
+            android:summary="@string/bg_incall_as_heads_up_summary"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:key="button_ringtone_category_key"
         android:title="@string/preference_category_ringtone"
         android:persistent="false">
@@ -321,33 +342,5 @@
             android:persistent="true"
             />
     </PreferenceScreen>
-
-    <PreferenceCategory
-        android:key="preference_category_interface_key"
-        android:title="@string/preference_category_interface"
-        android:persistent="false">
-
-        <CheckBoxPreference
-            android:key="bg_incall_screen"
-            android:title="@string/bg_incall"
-            android:persistent="false"
-            android:defaultValue="true"
-            android:summary="@string/bg_incall_summary"/>
-
-        <CheckBoxPreference
-            android:key="bg_incall_screen_as_heads_up"
-            android:title="@string/bg_incall_as_heads_up"
-            android:persistent="false"
-            android:defaultValue="true"
-            android:dependency="bg_incall_screen"
-            android:summary="@string/bg_incall_as_heads_up_summary"/>
-
-        <CheckBoxPreference
-            android:key="button_non_intrusive_incall"
-            android:title="@string/non_intrusive_incall_title"
-            android:summary="@string/non_intrusive_incall_summary"
-            android:persistent="false"
-            android:defaultValue="false" />
-    </PreferenceCategory>
 
 </PreferenceScreen>

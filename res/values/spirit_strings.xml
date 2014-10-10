@@ -16,10 +16,6 @@
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
 
-    <string name="preference_category_interface">Interface</string>
-    <string name="non_intrusive_incall_title">Non intrusive</string>
-    <string name="non_intrusive_incall_summary">Use non intrusive dialog for incoming calls</string>
-
     <!-- Setting title for the flip action setting. -->
     <string name="flip_action_title">Flip action</string>
 
@@ -55,5 +51,7 @@
     <string name="entry_15dip">15dip</string>
     <string name="entry_20dip">20dip</string>
     <string name="entry_25dip">25dip</string>
+
+    <string name="preference_category_interface">Interface</string>
 
 </resources>

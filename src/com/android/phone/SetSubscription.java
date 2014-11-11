@@ -30,6 +30,7 @@
 package com.android.phone;
 
 import java.lang.Integer;
+import java.util.ArrayList;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -62,6 +63,8 @@ import com.codeaurora.telephony.msim.SubscriptionData;
 import com.codeaurora.telephony.msim.Subscription;
 import com.codeaurora.telephony.msim.SubscriptionManager;
 
+import static android.telephony.TelephonyManager.SIM_STATE_ABSENT;
+
 /**
  * Displays a dialer like interface to Set the Subscriptions.
  */
@@ -72,7 +75,8 @@ public class SetSubscription extends PreferenceActivity implements
     public static final int SUBSCRIPTION_INDEX_INVALID = 99999;
 
     private PreferenceScreen mPreferenceScreen;
-    SwitchPreference subArray[];
+    private SwitchPreference subArray[];
+    private ArrayList<SwitchPreference> mSwitches = new ArrayList<SwitchPreference>();
     private boolean subErr = false;
     private SubscriptionData[] mCardSubscrInfo;
     private SubscriptionData mCurrentSelSub;
@@ -92,8 +96,6 @@ public class SetSubscription extends PreferenceActivity implements
     private final int EVENT_SET_SUBSCRIPTION_DONE = 1;
 
     private final int EVENT_SIM_STATE_CHANGED = 2;
-
-    private final int DIALOG_SET_SUBSCRIPTION_IN_PROGRESS = 100;
 
     public void onCreate(Bundle icicle) {
         boolean newCardNotify = getIntent().getBooleanExtra("NOTIFY_NEW_CARD_AVAILABLE", false);
@@ -136,7 +138,8 @@ public class SetSubscription extends PreferenceActivity implements
                     EVENT_SIM_STATE_CHANGED, null);
             if (mSubscriptionManager.isSetSubscriptionInProgress()) {
                 Log.d(TAG, "onCreate: SetSubscription is in progress when started this activity");
-                showDialog(DIALOG_SET_SUBSCRIPTION_IN_PROGRESS);
+                getPreferenceScreen().setEnabled(false);
+
                 mSubscriptionManager.registerForSetSubscriptionCompleted(
                         mHandler, EVENT_SET_SUBSCRIPTION_DONE, null);
             }
@@ -274,7 +277,8 @@ public class SetSubscription extends PreferenceActivity implements
     /** add radio buttons to the group */
     private void populateList() {
         Log.d(TAG, "populateList:  mCardSubscrInfo.length = " + mCardSubscrInfo.length);
-
+        MSimTelephonyManager tm = MSimTelephonyManager.getDefault();
+        mSwitches.clear();
         int k = 0;
         // Create PreferenceCatergory sub groups for each card.
         for (SubscriptionData cardSub : mCardSubscrInfo) {
@@ -282,12 +286,17 @@ public class SetSubscription extends PreferenceActivity implements
                 int i = 0;
 
                 String subGroupTitle = getString(R.string.multi_sim_entry_format_no_carrier, k + 1);
-                String simName = Settings.System.getString(getContentResolver(),
-                        MSimPhoneGlobals.PREF_SUB_NAME + (k + 1));
+                String simName = Settings.Global.getSimNameForSubscription(this, k, null);
                 if (TextUtils.isEmpty(simName)) {
                     // This should get generated at boot or on sim swap.
                     // But if not, do it now.
-                    simName = MSimPhoneGlobals.generateDefaultNameForSubscription(this, k);
+                    String operatorName = tm.getSimOperatorName(k);
+                    if (tm.getSimState(i) == SIM_STATE_ABSENT || TextUtils.isEmpty(operatorName)) {
+                        simName = getString(R.string.default_sim_name, k + 1);
+                    } else {
+                        simName = operatorName;
+                        Settings.Global.setSimNameForSubscription(this, k, operatorName);
+                    }
                 }
 
                 // Create a subgroup for the apps in each card
@@ -315,6 +324,7 @@ public class SetSubscription extends PreferenceActivity implements
                         switchPreference.setKey(new String("slot" + k + " index" + i));
                         switchPreference.setOnPreferenceChangeListener(mSwitchListener);
                         subGroup.addPreference(switchPreference);
+                        mSwitches.add(switchPreference);
                     }
                     i++;
                 }
@@ -325,28 +335,50 @@ public class SetSubscription extends PreferenceActivity implements
 
     Preference.OnPreferenceChangeListener mSwitchListener =
             new Preference.OnPreferenceChangeListener() {
-        public boolean onPreferenceChange(Preference preference,
-                Object newValue) {
-            SwitchPreference subPref = (SwitchPreference)preference;
-            String key = subPref.getKey();
-            boolean on = (Boolean)newValue;
-            Log.d(TAG, "setSubscription: key = " + key);
-            String splitKey[] = key.split(" ");
-            String sSlotId = splitKey[0].substring(splitKey[0].indexOf("slot") + 4);
-            int slotIndex = Integer.parseInt(sSlotId);
+                public boolean onPreferenceChange(Preference preference,
+                        Object newValue) {
+                    SwitchPreference subPref = (SwitchPreference)preference;
+                    String key = subPref.getKey();
+                    boolean on = (Boolean)newValue;
+                    int numSubSelected = 0;
+                    for (int i = 0; i < subArray.length; i++) {
+                        if (subArray[i] != null) {
+                            SwitchPreference pref = subArray[i];
+                            if (pref.isChecked() && !pref.equals(subPref)) {
+                                numSubSelected++;
+                            }
+                        }
+                    }
+                    Log.d(TAG, "setSubscription: key = " + key);
+                    if (numSubSelected == 0) {
+                        // Show a message to prompt the user to select atleast one.
+                        Toast toast = Toast.makeText(getApplicationContext(),
+                                R.string.set_subscription_error_atleast_one,
+                                Toast.LENGTH_SHORT);
+                        toast.show();
+                        subPref.setChecked(!on);
+                        clearUpdatingPreferenceStatus();
+                        return false;
+                    }  else {
+                        String splitKey[] = key.split(" ");
+                        String sSlotId = splitKey[0].substring(splitKey[0].indexOf("slot") + 4);
+                        int slotIndex = Integer.parseInt(sSlotId);
 
-            if (on) {
-                if (subArray[slotIndex] != null) {
-                    subArray[slotIndex].setChecked(false);
+                        if (on) {
+                            if (subArray[slotIndex] != null) {
+                                subArray[slotIndex].setChecked(false);
+                            }
+                            subArray[slotIndex] = subPref;
+                        } else {
+                            subArray[slotIndex] = null;
+                        }
+                        setUpdatingPreferenceStatus(subPref, getResources()
+                                .getString(R.string.set_uicc_subscription_progress));
+                        setSubscription();
+                        return true;
+                    }
                 }
-                subArray[slotIndex] = subPref;
-            } else {
-                subArray[slotIndex] = null;
-            }
-            setSubscription();
-            return true;
-        }
-    };
+            };
 
     Preference.OnPreferenceChangeListener mEditTextListener =
             new Preference.OnPreferenceChangeListener() {
@@ -356,7 +388,7 @@ public class SetSubscription extends PreferenceActivity implements
                     String newVal = (String)newValue;
                     String oldVal = editTextPreference.getText();
                     if (!newVal.equals(oldVal)) {
-                        MSimPhoneGlobals.setSubscriptionName(getBaseContext(),
+                        Settings.Global.setSimNameForSubscription(getBaseContext(),
                                 Integer.valueOf(preference.getKey()), newVal);
                         editTextPreference.setSummary(newVal);
                         return true;
@@ -472,7 +504,7 @@ public class SetSubscription extends PreferenceActivity implements
                 boolean ret = mSubscriptionManager.setSubscription(mUserSelSub);
                 if (ret) {
                     if (mIsForeground) {
-                        showDialog(DIALOG_SET_SUBSCRIPTION_IN_PROGRESS);
+                        getPreferenceScreen().setEnabled(false);
                     }
                     mSubscriptionManager.registerForSetSubscriptionCompleted(mHandler,
                             EVENT_SET_SUBSCRIPTION_DONE, null);
@@ -531,7 +563,7 @@ public class SetSubscription extends PreferenceActivity implements
                 case EVENT_SET_SUBSCRIPTION_DONE:
                     Log.d(TAG, "EVENT_SET_SUBSCRIPTION_DONE");
                     mSubscriptionManager.unRegisterForSetSubscriptionCompleted(mHandler);
-                    dismissDialogSafely(DIALOG_SET_SUBSCRIPTION_IN_PROGRESS);
+                    clearUpdatingPreferenceStatus();
                     getPreferenceScreen().setEnabled(true);
                     ar = (AsyncResult) msg.obj;
 
@@ -556,33 +588,12 @@ public class SetSubscription extends PreferenceActivity implements
                     mPreferenceScreen.removeAll();
                     populateList();
                     updateSwitches();
+                    clearUpdatingPreferenceStatus();
                     break;
             }
         }
     };
 
-    @Override
-    protected Dialog onCreateDialog(int id) {
-        if (id == DIALOG_SET_SUBSCRIPTION_IN_PROGRESS) {
-            ProgressDialog dialog = new ProgressDialog(this);
-
-            dialog.setMessage(getResources().getString(R.string.set_uicc_subscription_progress));
-            dialog.setCancelable(false);
-            dialog.setIndeterminate(true);
-
-            return dialog;
-        }
-        return null;
-    }
-
-    @Override
-    protected void onPrepareDialog(int id, Dialog dialog) {
-        if (id == DIALOG_SET_SUBSCRIPTION_IN_PROGRESS) {
-            // when the dialogs come up, we'll need to indicate that
-            // we're in a busy state to disallow further input.
-            getPreferenceScreen().setEnabled(false);
-        }
-    }
     private boolean isFailed(String status) {
         Log.d(TAG, "isFailed(" + status + ")");
         if (status == null ||
@@ -594,6 +605,18 @@ public class SetSubscription extends PreferenceActivity implements
             return true;
         }
         return false;
+    }
+
+    private void setUpdatingPreferenceStatus(Preference preference, String status) {
+        if (preference != null) {
+            preference.setSummary(status);
+        }
+    }
+
+    private void clearUpdatingPreferenceStatus() {
+        for (SwitchPreference preference: mSwitches) {
+            preference.setSummary(null);
+        }
     }
 
     String setSubscriptionStatusToString(String status) {
@@ -654,6 +677,7 @@ public class SetSubscription extends PreferenceActivity implements
 
     // This is a method implemented for DialogInterface.OnDismissListener
     public void onDismiss(DialogInterface dialog) {
+        clearUpdatingPreferenceStatus();
         mAlertDialog = null;
     }
 
@@ -667,17 +691,6 @@ public class SetSubscription extends PreferenceActivity implements
             Log.w(TAG, "Exception dismissing dialog. Ex=" + e);
         }
         updateSwitches();
-    }
-
-    private void dismissDialogSafely(int id) {
-        Log.d(TAG, "dismissDialogSafely: id = " + id);
-        try {
-            dismissDialog(id);
-        } catch (IllegalArgumentException e) {
-            // This is expected in the case where we were in the background
-            // at the time we would normally have shown the dialog, so we didn't
-            // show it.
-        }
     }
 
 }
